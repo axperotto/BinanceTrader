@@ -1,4 +1,5 @@
 using CryptoResearchTool.Application.Interfaces;
+using CryptoResearchTool.Application.Optimization;
 using CryptoResearchTool.Application.Services;
 using CryptoResearchTool.Domain.Configuration;
 using CryptoResearchTool.Infrastructure;
@@ -51,6 +52,7 @@ internal static class Program
             new SqliteRepository(appConfig.DatabasePath, sp.GetRequiredService<ILogger<SqliteRepository>>()));
         services.AddSingleton<IMetricsCalculator, MetricsCalculator>();
         services.AddSingleton<HistoricalBacktestEngine>();
+        services.AddSingleton<IOptimizationEngine, OptimizationEngine>();
         services.AddSingleton<MainForm>();
 
         var provider = services.BuildServiceProvider();
