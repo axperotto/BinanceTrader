@@ -3,6 +3,7 @@ public class AppConfiguration
 {
     public BinanceConfiguration Binance { get; set; } = new();
     public SimulationConfiguration Simulation { get; set; } = new();
+    public HistoricalAnalysisConfiguration Historical { get; set; } = new();
     public List<string> Symbols { get; set; } = new();
     public List<StrategyConfiguration> Strategies { get; set; } = new();
     public string DatabasePath { get; set; } = "data/cryptoresearch.db";

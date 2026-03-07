@@ -39,12 +39,18 @@ internal static class Program
         services.AddSingleton(appConfig);
         services.AddSingleton(appConfig.Binance);
         services.AddSingleton(appConfig.Simulation);
+        services.AddSingleton(appConfig.Historical);
         services.AddLogging(b => b.AddSerilog(dispose: true));
         services.AddSingleton<IMarketDataProvider>(sp =>
             new BinanceWebSocketClient(appConfig.Binance, sp.GetRequiredService<ILogger<BinanceWebSocketClient>>()));
+        services.AddSingleton<IHistoricalDataService>(sp =>
+            new BinanceHistoricalDataService(appConfig.Binance, sp.GetRequiredService<ILogger<BinanceHistoricalDataService>>()));
+        services.AddSingleton<IHistoricalDataCache>(sp =>
+            new FileHistoricalDataCache(appConfig.Historical.CacheDirectory, sp.GetRequiredService<ILogger<FileHistoricalDataCache>>()));
         services.AddSingleton<IPersistenceRepository>(sp =>
             new SqliteRepository(appConfig.DatabasePath, sp.GetRequiredService<ILogger<SqliteRepository>>()));
         services.AddSingleton<IMetricsCalculator, MetricsCalculator>();
+        services.AddSingleton<HistoricalBacktestEngine>();
         services.AddSingleton<MainForm>();
 
         var provider = services.BuildServiceProvider();
@@ -62,6 +68,7 @@ internal static class Program
         // Bind from appsettings.json
         configuration.GetSection("Binance").Bind(appConfig.Binance);
         configuration.GetSection("Simulation").Bind(appConfig.Simulation);
+        configuration.GetSection("Historical").Bind(appConfig.Historical);
         appConfig.DatabasePath = configuration["DatabasePath"] ?? appConfig.DatabasePath;
         appConfig.LogPath = configuration["LogPath"] ?? appConfig.LogPath;
         appConfig.MetricsSnapshotIntervalSeconds = int.TryParse(
