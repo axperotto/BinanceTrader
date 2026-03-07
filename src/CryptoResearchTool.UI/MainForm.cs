@@ -259,10 +259,11 @@ public partial class MainForm : Form
         if (!_runners.Any()) { MessageBox.Show("No strategies running.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
         using var dlg = new SaveFileDialog { Filter = "CSV|*.csv", FileName = $"trades_{DateTime.Now:yyyyMMdd_HHmmss}.csv" };
         if (dlg.ShowDialog() != DialogResult.OK) return;
+        static string CsvField(string s) => s.Contains(',') || s.Contains('"') || s.Contains('\n') ? $"\"{s.Replace("\"", "\"\"")}\"" : s;
         var lines = new List<string> { "Strategy,Symbol,EntryPrice,ExitPrice,Quantity,PnL,PnLPercent,EntryTime,ExitTime,EntryReason,ExitReason" };
         foreach (var runner in _runners)
             foreach (var t in runner.Portfolio.CompletedTrades)
-                lines.Add($"{runner.Strategy.Name},{t.Symbol},{t.EntryPrice:F8},{t.ExitPrice:F8},{t.Quantity:F8},{t.PnL:F2},{t.PnLPercent:F2},{t.EntryTime:O},{t.ExitTime:O},{t.EntryReason},{t.ExitReason}");
+                lines.Add($"{CsvField(runner.Strategy.Name)},{CsvField(t.Symbol)},{t.EntryPrice:F8},{t.ExitPrice:F8},{t.Quantity:F8},{t.PnL:F2},{t.PnLPercent:F2},{t.EntryTime:O},{t.ExitTime:O},{CsvField(t.EntryReason)},{CsvField(t.ExitReason)}");
         File.WriteAllLines(dlg.FileName, lines);
         AppendLog("INFO", $"Exported {lines.Count - 1} trades to {dlg.FileName}");
     }

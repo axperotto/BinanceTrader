@@ -203,12 +203,12 @@ VALUES(@RunId,@Name,@Ts,@Trades,@WR,@NP,@Ret,@DD,@SR,@Eq)", conn);
                 Id = Guid.Parse(reader.GetString(0)),
                 StrategyRunId = reader.GetString(1),
                 Symbol = reader.GetString(2),
-                EntryPrice = reader.GetDecimal(3),
-                ExitPrice = reader.GetDecimal(4),
-                Quantity = reader.GetDecimal(5),
-                PnL = reader.GetDecimal(6),
-                PnLPercent = reader.GetDecimal(7),
-                TotalFees = reader.GetDecimal(8),
+                EntryPrice = (decimal)reader.GetDouble(3),
+                ExitPrice = (decimal)reader.GetDouble(4),
+                Quantity = (decimal)reader.GetDouble(5),
+                PnL = (decimal)reader.GetDouble(6),
+                PnLPercent = (decimal)reader.GetDouble(7),
+                TotalFees = (decimal)reader.GetDouble(8),
                 EntryTime = DateTime.Parse(reader.GetString(9)),
                 ExitTime = DateTime.Parse(reader.GetString(10)),
                 HoldingTime = TimeSpan.FromSeconds(reader.GetDouble(11)),
@@ -232,9 +232,9 @@ VALUES(@RunId,@Name,@Ts,@Trades,@WR,@NP,@Ret,@DD,@SR,@Eq)", conn);
             points.Add(new EquityPoint
             {
                 Timestamp = DateTime.Parse(reader.GetString(0)),
-                Equity = reader.GetDecimal(1),
-                Cash = reader.GetDecimal(2),
-                UnrealizedPnL = reader.GetDecimal(3)
+                Equity = (decimal)reader.GetDouble(1),
+                Cash = (decimal)reader.GetDouble(2),
+                UnrealizedPnL = (decimal)reader.GetDouble(3)
             });
         }
         return points;

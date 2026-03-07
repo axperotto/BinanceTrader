@@ -69,7 +69,8 @@ public class BinanceWebSocketClient : IMarketDataProvider, IDisposable
                     _logger.LogError("Max reconnect attempts reached");
                     break;
                 }
-                await Task.Delay(TimeSpan.FromSeconds(_config.ReconnectDelaySeconds), ct).ConfigureAwait(false);
+                try { await Task.Delay(TimeSpan.FromSeconds(_config.ReconnectDelaySeconds), ct).ConfigureAwait(false); }
+                catch (OperationCanceledException) { break; }
             }
         }
     }
