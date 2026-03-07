@@ -17,6 +17,10 @@ public abstract class BaseStrategy : ITradingStrategy
     protected StrategySignal? _lastSignal;
     protected readonly SimulationConfiguration _simConfig;
 
+    // Tracks the close time of the most recent closed candle so that signals generated
+    // in historical mode carry the candle's own timestamp rather than wall-clock time.
+    private DateTime _lastCandleTime = DateTime.UtcNow;
+
     protected BaseStrategy(string symbol, string timeframe, SimulationConfiguration simConfig)
     {
         Symbol = symbol;
@@ -48,6 +52,8 @@ public abstract class BaseStrategy : ITradingStrategy
         if (candle.Symbol != Symbol || candle.Timeframe != Timeframe) return;
         if (candle.IsClosed)
         {
+            LastPrice = candle.Close;
+            _lastCandleTime = candle.OpenTime;
             CandleHistory.Add(candle);
             if (CandleHistory.Count > MaxHistory) CandleHistory.RemoveAt(0);
         }
@@ -67,7 +73,7 @@ public abstract class BaseStrategy : ITradingStrategy
         Symbol = Symbol,
         Type = type,
         Price = price,
-        Timestamp = DateTime.UtcNow,
+        Timestamp = _lastCandleTime,
         Reason = reason
     };
 }
