@@ -14,6 +14,7 @@ public partial class MainForm : Form
     private readonly IPersistenceRepository _repository;
     private readonly IMetricsCalculator _metricsCalculator;
     private readonly HistoricalBacktestEngine _backtestEngine;
+    private readonly IOptimizationEngine _optimizationEngine;
     private readonly ILogger<MainForm> _logger;
 
     private readonly List<StrategyRunner> _runners = new();
@@ -34,6 +35,7 @@ public partial class MainForm : Form
     private Button _btnOpenFolder = null!;
     private Button _btnExportCsv = null!;
     private Button _btnExportEquity = null!;
+    private Button _btnOptimizer = null!;
     private StatusStrip _statusStrip = null!;
     private ToolStripStatusLabel _tsslConnection = null!;
     private ToolStripStatusLabel _tsslMode = null!;
@@ -65,6 +67,7 @@ public partial class MainForm : Form
     public MainForm(AppConfiguration config, IMarketDataProvider marketData,
         IPersistenceRepository repository, IMetricsCalculator metricsCalculator,
         HistoricalBacktestEngine backtestEngine,
+        IOptimizationEngine optimizationEngine,
         ILogger<MainForm> logger)
     {
         _config = config;
@@ -72,6 +75,7 @@ public partial class MainForm : Form
         _repository = repository;
         _metricsCalculator = metricsCalculator;
         _backtestEngine = backtestEngine;
+        _optimizationEngine = optimizationEngine;
         _logger = logger;
         InitializeComponent();
         WireEvents();
@@ -92,10 +96,11 @@ public partial class MainForm : Form
         _btnOpenFolder = new Button { Text = "📁 Folder", Width = 100, Height = 36, Left = 224, Top = 12, FlatStyle = FlatStyle.Flat };
         _btnExportCsv = new Button { Text = "📊 Trades CSV", Width = 120, Height = 36, Left = 332, Top = 12, FlatStyle = FlatStyle.Flat };
         _btnExportEquity = new Button { Text = "📈 Equity CSV", Width = 120, Height = 36, Left = 460, Top = 12, FlatStyle = FlatStyle.Flat };
-        _lblRunName = new Label { Text = "Run: -", AutoSize = true, Left = 594, Top = 20, Font = new Font("Segoe UI", 9f) };
-        _lblUptime = new Label { Text = "Uptime: 00:00:00", AutoSize = true, Left = 788, Top = 20, Font = new Font("Segoe UI", 9f) };
-        _lblStatus = new Label { Text = "", AutoSize = true, Left = 988, Top = 20, Font = new Font("Segoe UI", 9f) };
-        topPanel.Controls.AddRange(new Control[] { _btnStart, _btnStop, _btnOpenFolder, _btnExportCsv, _btnExportEquity, _lblRunName, _lblUptime, _lblStatus });
+        _btnOptimizer = new Button { Text = "⚙ Optimizer", Width = 110, Height = 36, Left = 588, Top = 12, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(108, 117, 125), ForeColor = Color.White };
+        _lblRunName = new Label { Text = "Run: -", AutoSize = true, Left = 714, Top = 20, Font = new Font("Segoe UI", 9f) };
+        _lblUptime = new Label { Text = "Uptime: 00:00:00", AutoSize = true, Left = 908, Top = 20, Font = new Font("Segoe UI", 9f) };
+        _lblStatus = new Label { Text = "", AutoSize = true, Left = 1108, Top = 20, Font = new Font("Segoe UI", 9f) };
+        topPanel.Controls.AddRange(new Control[] { _btnStart, _btnStop, _btnOpenFolder, _btnExportCsv, _btnExportEquity, _btnOptimizer, _lblRunName, _lblUptime, _lblStatus });
 
         // ── Mode selector panel ─────────────────────────────────────────────
         var modePanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8, 6, 8, 6), BackColor = Color.FromArgb(248, 249, 250) };
@@ -266,6 +271,7 @@ public partial class MainForm : Form
         _btnOpenFolder.Click += (s, e) => OpenDataFolder();
         _btnExportCsv.Click += (s, e) => ExportTradesCsv();
         _btnExportEquity.Click += (s, e) => ExportEquityCsv();
+        _btnOptimizer.Click += (s, e) => OpenOptimizerForm();
         _gridStrategies.CellDoubleClick += (s, e) => ShowStrategyDetail(e.RowIndex);
         _marketData.ConnectionChanged += (s, e) => Invoke(() => UpdateConnectionStatus(e));
         FormClosing += async (s, e) => { if (_cts != null) await StopAsync(); };
@@ -281,6 +287,12 @@ public partial class MainForm : Form
         {
             if (_chkUseCache.Checked) _chkForceRefresh.Checked = false;
         };
+    }
+
+    private void OpenOptimizerForm()
+    {
+        using var form = new OptimizerForm(_optimizationEngine, _config.Strategies, _config);
+        form.ShowDialog(this);
     }
 
     private void ApplyMode(AppMode mode)
