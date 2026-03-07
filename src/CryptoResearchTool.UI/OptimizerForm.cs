@@ -466,15 +466,15 @@ public partial class OptimizerForm : Form
 
         StartElapsedTimer();
 
+        // Progress<T> already marshals callbacks to the UI thread via its captured
+        // SynchronizationContext, so a second BeginInvoke is unnecessary and could
+        // cause the inner callback to run on a disposed form.
         var progressReporter = new Progress<OptimizationProgress>(p =>
         {
             if (!IsHandleCreated || IsDisposed) return;
-            BeginInvoke(() =>
-            {
-                int pct = p.Total > 0 ? (int)(p.CurrentIndex * 100L / p.Total) : 0;
-                _progressBar.Value = Math.Max(0, Math.Min(100, pct));
-                _lblProgress.Text  = p.Status;
-            });
+            int pct = p.Total > 0 ? (int)(p.CurrentIndex * 100L / p.Total) : 0;
+            _progressBar.Value = Math.Max(0, Math.Min(100, pct));
+            _lblProgress.Text  = p.Status;
         });
 
         try
@@ -483,6 +483,9 @@ public partial class OptimizerForm : Form
                 () => _engine.RunAsync(request, progressReporter, _cts.Token),
                 _cts.Token);
 
+            // Guard: the user may have closed the form while the task was running.
+            if (IsDisposed) return;
+
             PopulateResultsGrid(_results);
             _lblResultCount.Text = $"{_results.Count} results  (best score: {_results.FirstOrDefault()?.OverallScore:F2})";
             _btnExportCsv.Enabled  = _results.Count > 0;
@@ -490,17 +493,23 @@ public partial class OptimizerForm : Form
         }
         catch (OperationCanceledException)
         {
-            _lblResultCount.Text = "Cancelled.";
+            if (!IsDisposed) _lblResultCount.Text = "Cancelled.";
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Optimization failed:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            _lblResultCount.Text = "Error.";
+            if (!IsDisposed)
+            {
+                MessageBox.Show($"Optimization failed:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _lblResultCount.Text = "Error.";
+            }
         }
         finally
         {
-            SetRunning(false);
-            _elapsedTimer?.Stop();
+            // The form may have been closed (and disposed) while the background task
+            // was still running. Guard every UI access to prevent ObjectDisposedException
+            // from propagating out of an async void method and crashing the application.
+            if (!IsDisposed) SetRunning(false);
+            try { _elapsedTimer?.Stop(); } catch (ObjectDisposedException) { }
         }
     }
 
