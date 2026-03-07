@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="CryptoResearchTool.Application/CryptoResearchTool.Application.csproj" />
+  <Project Path="CryptoResearchTool.Domain/CryptoResearchTool.Domain.csproj" />
+  <Project Path="CryptoResearchTool.Infrastructure/CryptoResearchTool.Infrastructure.csproj" />
+  <Project Path="CryptoResearchTool.Persistence/CryptoResearchTool.Persistence.csproj" />
+  <Project Path="CryptoResearchTool.UI/CryptoResearchTool.UI.csproj" />
+</Solution>
