@@ -78,13 +78,27 @@ public class StrategyDetailForm : Form
         metricsGrid.Rows.Add("Losing Trades", m.LosingTrades.ToString());
         metricsGrid.Rows.Add("Win Rate", $"{m.WinRate:F1}%");
         metricsGrid.Rows.Add("Profit Factor", $"{m.ProfitFactor:F2}");
+        metricsGrid.Rows.Add("Average Win", $"${m.AverageWin:F2}");
+        metricsGrid.Rows.Add("Average Loss", $"${m.AverageLoss:F2}");
         metricsGrid.Rows.Add("Avg Trade PnL", $"${m.AverageTradePnL:F2}");
         metricsGrid.Rows.Add("Expectancy", $"${m.Expectancy:F2}");
         metricsGrid.Rows.Add("Max Drawdown", $"${m.MaxDrawdown:F2} ({m.MaxDrawdownPercent:F2}%)");
         metricsGrid.Rows.Add("Sharpe Ratio", $"{m.SharpeRatio:F3}");
+        metricsGrid.Rows.Add("Exposure %", $"{m.ExposurePercent:F1}%");
+        metricsGrid.Rows.Add("Longest Win Streak", m.LongestWinStreak.ToString());
+        metricsGrid.Rows.Add("Longest Lose Streak", m.LongestLoseStreak.ToString());
         metricsGrid.Rows.Add("Signals Generated", m.SignalsGenerated.ToString());
         metricsGrid.Rows.Add("Signals Executed", m.SignalsExecuted.ToString());
         metricsGrid.Rows.Add("Last Updated", m.LastUpdated.ToString("HH:mm:ss"));
+
+        // Exit reason breakdown
+        if (m.ExitReasonCounts.Count > 0)
+        {
+            metricsGrid.Rows.Add("", "");
+            metricsGrid.Rows.Add("── Exit Reasons ──", "");
+            foreach (var kv in m.ExitReasonCounts)
+                metricsGrid.Rows.Add(kv.Key, kv.Value.ToString());
+        }
 
         var tradesGrid = (DataGridView)Controls.OfType<TabControl>().First().TabPages[1].Controls[0];
         tradesGrid.Rows.Clear();
@@ -96,9 +110,10 @@ public class StrategyDetailForm : Form
                 $"{t.Quantity:F6}",
                 $"{t.PnL:F2}",
                 $"{t.PnLPercent:F2}%",
-                t.ExitReason
+                t.ExitReasonCategory
             );
-            tradesGrid.Rows[tradesGrid.Rows.Count - 1].DefaultCellStyle.BackColor = t.IsWinner ? Color.FromArgb(220, 255, 220) : Color.FromArgb(255, 220, 220);
+            tradesGrid.Rows[tradesGrid.Rows.Count - 1].DefaultCellStyle.BackColor =
+                t.IsWinner ? Color.FromArgb(220, 255, 220) : Color.FromArgb(255, 220, 220);
         }
     }
 }

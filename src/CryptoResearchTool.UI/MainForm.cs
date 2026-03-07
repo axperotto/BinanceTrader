@@ -33,6 +33,7 @@ public partial class MainForm : Form
     private Button _btnStop = null!;
     private Button _btnOpenFolder = null!;
     private Button _btnExportCsv = null!;
+    private Button _btnExportEquity = null!;
     private StatusStrip _statusStrip = null!;
     private ToolStripStatusLabel _tsslConnection = null!;
     private ToolStripStatusLabel _tsslMode = null!;
@@ -52,6 +53,9 @@ public partial class MainForm : Form
     private NumericUpDown _nudSlippagePercent = null!;
     private CheckBox _chkUseCache = null!;
     private CheckBox _chkForceRefresh = null!;
+    // Historical test mode selector
+    private RadioButton _rbGlobalTest = null!;
+    private RadioButton _rbPerStrategyTest = null!;
 
     // Progress controls
     private Panel _progressPanel = null!;
@@ -86,11 +90,12 @@ public partial class MainForm : Form
         _btnStart = new Button { Text = "▶ Start", Width = 100, Height = 36, Left = 8, Top = 12, BackColor = Color.FromArgb(40, 167, 69), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
         _btnStop = new Button { Text = "■ Stop", Width = 100, Height = 36, Left = 116, Top = 12, BackColor = Color.FromArgb(220, 53, 69), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Enabled = false };
         _btnOpenFolder = new Button { Text = "📁 Folder", Width = 100, Height = 36, Left = 224, Top = 12, FlatStyle = FlatStyle.Flat };
-        _btnExportCsv = new Button { Text = "📊 Export CSV", Width = 120, Height = 36, Left = 332, Top = 12, FlatStyle = FlatStyle.Flat };
-        _lblRunName = new Label { Text = "Run: -", AutoSize = true, Left = 466, Top = 20, Font = new Font("Segoe UI", 9f) };
-        _lblUptime = new Label { Text = "Uptime: 00:00:00", AutoSize = true, Left = 660, Top = 20, Font = new Font("Segoe UI", 9f) };
-        _lblStatus = new Label { Text = "", AutoSize = true, Left = 860, Top = 20, Font = new Font("Segoe UI", 9f) };
-        topPanel.Controls.AddRange(new Control[] { _btnStart, _btnStop, _btnOpenFolder, _btnExportCsv, _lblRunName, _lblUptime, _lblStatus });
+        _btnExportCsv = new Button { Text = "📊 Trades CSV", Width = 120, Height = 36, Left = 332, Top = 12, FlatStyle = FlatStyle.Flat };
+        _btnExportEquity = new Button { Text = "📈 Equity CSV", Width = 120, Height = 36, Left = 460, Top = 12, FlatStyle = FlatStyle.Flat };
+        _lblRunName = new Label { Text = "Run: -", AutoSize = true, Left = 594, Top = 20, Font = new Font("Segoe UI", 9f) };
+        _lblUptime = new Label { Text = "Uptime: 00:00:00", AutoSize = true, Left = 788, Top = 20, Font = new Font("Segoe UI", 9f) };
+        _lblStatus = new Label { Text = "", AutoSize = true, Left = 988, Top = 20, Font = new Font("Segoe UI", 9f) };
+        topPanel.Controls.AddRange(new Control[] { _btnStart, _btnStop, _btnOpenFolder, _btnExportCsv, _btnExportEquity, _lblRunName, _lblUptime, _lblStatus });
 
         // ── Mode selector panel ─────────────────────────────────────────────
         var modePanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8, 6, 8, 6), BackColor = Color.FromArgb(248, 249, 250) };
@@ -101,11 +106,11 @@ public partial class MainForm : Form
         modeGroup.Controls.Add(_rbHistorical);
         modePanel.Controls.Add(modeGroup);
 
-        // ── Historical config panel ─────────────────────────────────────────
+        // ── Historical config panel (two rows + test mode row) ──────────────
         _historicalConfigPanel = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 88,
+            Height = 114,
             Padding = new Padding(8, 4, 8, 4),
             BackColor = Color.FromArgb(235, 245, 255),
             Visible = false
@@ -144,11 +149,31 @@ public partial class MainForm : Form
         _chkUseCache = new CheckBox { Text = "Use local cache", Left = lx + spacing * 3, Top = 44, Width = 130, Checked = _config.Historical.UseLocalCache };
         _chkForceRefresh = new CheckBox { Text = "Force refresh", Left = lx + spacing * 3 + 136, Top = 44, Width = 120, Checked = _config.Historical.ForceRefresh };
 
+        // Row 3: Test mode selector
+        var testModeLabel = new Label
+        {
+            Text = "Test mode:",
+            Left = lx, Top = 82, AutoSize = true, Font = new Font("Segoe UI", 8.5f)
+        };
+        _rbGlobalTest = new RadioButton
+        {
+            Text = "Global test (same symbol/TF for all strategies)",
+            Left = cx, Top = 80, Width = 320, Checked = true,
+            Font = new Font("Segoe UI", 8.5f)
+        };
+        _rbPerStrategyTest = new RadioButton
+        {
+            Text = "Per-strategy test (each strategy uses its own symbol/TF)",
+            Left = cx + 330, Top = 80, Width = 380,
+            Font = new Font("Segoe UI", 8.5f)
+        };
+
         _historicalConfigPanel.Controls.AddRange(new Control[]
         {
             _cmbSymbol, _cmbTimeframe, _dtpStartDate, _dtpEndDate,
             _nudInitialCapital, _nudFeePercent, _nudSlippagePercent,
-            _chkUseCache, _chkForceRefresh
+            _chkUseCache, _chkForceRefresh,
+            testModeLabel, _rbGlobalTest, _rbPerStrategyTest
         });
 
         // ── Progress panel ──────────────────────────────────────────────────
@@ -229,7 +254,8 @@ public partial class MainForm : Form
         _btnStart.Click += async (s, e) => await StartAsync();
         _btnStop.Click += async (s, e) => await StopAsync();
         _btnOpenFolder.Click += (s, e) => OpenDataFolder();
-        _btnExportCsv.Click += (s, e) => ExportCsv();
+        _btnExportCsv.Click += (s, e) => ExportTradesCsv();
+        _btnExportEquity.Click += (s, e) => ExportEquityCsv();
         _gridStrategies.CellDoubleClick += (s, e) => ShowStrategyDetail(e.RowIndex);
         _marketData.ConnectionChanged += (s, e) => Invoke(() => UpdateConnectionStatus(e));
         FormClosing += async (s, e) => { if (_cts != null) await StopAsync(); };
@@ -291,6 +317,7 @@ public partial class MainForm : Form
                     Microsoft.Extensions.Logging.Abstractions.NullLogger<PortfolioSimulator>.Instance,
                     runId, _config.Simulation.InitialCapital);
                 var runner = new StrategyRunner(runId, strategy, portfolio, _metricsCalculator, _repository, _config.Simulation,
+                    stratConfig,
                     Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
                 _runners.Add(runner);
                 _gridStrategies.Rows.Add(stratConfig.Name, stratConfig.Symbol, stratConfig.Timeframe, "-", "-", "0", "-", "-", "-", "-", "-", "Waiting");
@@ -347,7 +374,8 @@ public partial class MainForm : Form
             _lblProgressStatus.Text = "Starting...";
 
             AppendLog("INFO", $"[HISTORICAL] Starting backtest: {historicalConfig.Symbol} {historicalConfig.Timeframe} " +
-                               $"{historicalConfig.StartDate:yyyy-MM-dd} → {historicalConfig.EndDate:yyyy-MM-dd}");
+                               $"{historicalConfig.StartDate:yyyy-MM-dd} → {historicalConfig.EndDate:yyyy-MM-dd} " +
+                               $"[{historicalConfig.TestMode}]");
 
             var progress = new Progress<(string status, int candlesProcessed, int totalCandles)>(p =>
             {
@@ -389,6 +417,14 @@ public partial class MainForm : Form
             if (_runners.Count > 0)
             {
                 UpdateGrid();
+                // Log per-strategy summary
+                foreach (var runner in _runners)
+                {
+                    var m = runner.CurrentMetrics;
+                    AppendLog("INFO",
+                        $"  [{m.StrategyName}] Return={m.ReturnPercent:F2}% Trades={m.TotalTrades} " +
+                        $"WinRate={m.WinRate:F1}% DD={m.MaxDrawdownPercent:F2}% Sharpe={m.SharpeRatio:F2}");
+                }
                 AppendLog("INFO", $"[HISTORICAL] Analysis complete. {_runners.Count} strategies evaluated.");
                 UpdateHistoricalProgress("Completed", 1, 1);
             }
@@ -457,7 +493,8 @@ public partial class MainForm : Form
         SlippagePercent = _nudSlippagePercent.Value,
         UseLocalCache = _chkUseCache.Checked,
         ForceRefresh = _chkForceRefresh.Checked,
-        CacheDirectory = _config.Historical.CacheDirectory
+        CacheDirectory = _config.Historical.CacheDirectory,
+        TestMode = _rbPerStrategyTest.Checked ? HistoricalTestMode.PerStrategy : HistoricalTestMode.Global
     };
 
     // ── STOP ───────────────────────────────────────────────────────────────
@@ -571,7 +608,7 @@ public partial class MainForm : Form
         try { System.Diagnostics.Process.Start("explorer.exe", dir); } catch { }
     }
 
-    private void ExportCsv()
+    private void ExportTradesCsv()
     {
         if (!_runners.Any())
         {
@@ -585,13 +622,60 @@ public partial class MainForm : Form
             ? $"\"{s.Replace("\"", "\"\"")}\""
             : s;
 
-        var lines = new List<string> { "Strategy,Symbol,EntryPrice,ExitPrice,Quantity,PnL,PnLPercent,EntryTime,ExitTime,EntryReason,ExitReason" };
+        var lines = new List<string>
+        {
+            "Strategy,Symbol,EntryPrice,ExitPrice,Quantity,GrossPnL,NetPnL,PnLPercent,TotalFees,SlippageImpact,EntryTime,ExitTime,HoldingHours,EntryReason,ExitReason,ExitReasonCategory"
+        };
         foreach (var runner in _runners)
             foreach (var t in runner.Portfolio.CompletedTrades)
-                lines.Add($"{CsvField(runner.Strategy.Name)},{CsvField(t.Symbol)},{t.EntryPrice:F8},{t.ExitPrice:F8},{t.Quantity:F8},{t.PnL:F2},{t.PnLPercent:F2},{t.EntryTime:O},{t.ExitTime:O},{CsvField(t.EntryReason)},{CsvField(t.ExitReason)}");
+                lines.Add(string.Join(",",
+                    CsvField(runner.Strategy.Name),
+                    CsvField(t.Symbol),
+                    t.EntryPrice.ToString("F8"),
+                    t.ExitPrice.ToString("F8"),
+                    t.Quantity.ToString("F8"),
+                    t.GrossPnL.ToString("F2"),
+                    t.PnL.ToString("F2"),
+                    t.PnLPercent.ToString("F2"),
+                    t.TotalFees.ToString("F4"),
+                    t.SlippageImpact.ToString("F4"),
+                    t.EntryTime.ToString("O"),
+                    t.ExitTime.ToString("O"),
+                    t.HoldingTime.TotalHours.ToString("F2"),
+                    CsvField(t.EntryReason),
+                    CsvField(t.ExitReason),
+                    CsvField(t.ExitReasonCategory)));
 
         File.WriteAllLines(dlg.FileName, lines);
         AppendLog("INFO", $"Exported {lines.Count - 1} trades to {dlg.FileName}");
+    }
+
+    private void ExportEquityCsv()
+    {
+        if (!_runners.Any())
+        {
+            MessageBox.Show("No strategies have run yet.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        using var dlg = new SaveFileDialog { Filter = "CSV|*.csv", FileName = $"equity_{DateTime.Now:yyyyMMdd_HHmmss}.csv" };
+        if (dlg.ShowDialog() != DialogResult.OK) return;
+
+        static string CsvField(string s) => s.Contains(',') || s.Contains('"') || s.Contains('\n')
+            ? $"\"{s.Replace("\"", "\"\"")}\""
+            : s;
+
+        var lines = new List<string> { "Strategy,Timestamp,Equity,Cash,UnrealizedPnL" };
+        foreach (var runner in _runners)
+            foreach (var ep in runner.EquityHistory)
+                lines.Add(string.Join(",",
+                    CsvField(runner.Strategy.Name),
+                    ep.Timestamp.ToString("O"),
+                    ep.Equity.ToString("F2"),
+                    ep.Cash.ToString("F2"),
+                    ep.UnrealizedPnL.ToString("F2")));
+
+        File.WriteAllLines(dlg.FileName, lines);
+        AppendLog("INFO", $"Exported equity curve ({lines.Count - 1} points) to {dlg.FileName}");
     }
 
     private void AppendLog(string level, string message)

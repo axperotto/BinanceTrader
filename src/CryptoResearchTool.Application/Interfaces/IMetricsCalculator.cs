@@ -2,5 +2,10 @@ using CryptoResearchTool.Domain.Models;
 namespace CryptoResearchTool.Application.Interfaces;
 public interface IMetricsCalculator
 {
-    StrategyMetrics Calculate(string strategyRunId, string strategyName, IPortfolioSimulator portfolio, List<EquityPoint> equityHistory);
+    StrategyMetrics Calculate(
+        string strategyRunId,
+        string strategyName,
+        IPortfolioSimulator portfolio,
+        List<EquityPoint> equityHistory,
+        decimal exposurePercent = 0m);
 }

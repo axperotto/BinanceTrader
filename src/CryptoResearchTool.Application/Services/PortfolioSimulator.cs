@@ -25,7 +25,7 @@ public class PortfolioSimulator : IPortfolioSimulator
         Cash = initialCapital;
     }
 
-    public SimulatedOrder? ExecuteBuy(string symbol, decimal price, decimal positionSizePercent, string reason)
+    public SimulatedOrder? ExecuteBuy(string symbol, decimal price, decimal positionSizePercent, string reason, DateTime? timestamp = null)
     {
         lock (_lock)
         {
@@ -34,6 +34,7 @@ public class PortfolioSimulator : IPortfolioSimulator
                 _logger.LogDebug("Buy skipped: position already open for {Symbol}", symbol);
                 return null;
             }
+            var ts = timestamp ?? DateTime.UtcNow;
             var slippageMultiplier = 1m + (_config.SlippagePercent / 100m);
             var executedPrice = price * slippageMultiplier;
             var capitalToUse = Cash * (positionSizePercent / 100m);
@@ -42,14 +43,17 @@ public class PortfolioSimulator : IPortfolioSimulator
             var quantity = capitalAfterFee / executedPrice;
             if (quantity <= 0 || Cash < capitalToUse) return null;
             Cash -= capitalToUse;
+            var slippageImpact = price * quantity * (_config.SlippagePercent / 100m);
             OpenPosition = new PortfolioPosition
             {
                 Symbol = symbol,
                 Quantity = quantity,
                 EntryPrice = executedPrice,
                 CurrentPrice = executedPrice,
-                EntryTime = DateTime.UtcNow,
-                EntryReason = reason
+                EntryTime = ts,
+                EntryReason = reason,
+                EntryFee = fee,
+                SlippageImpact = slippageImpact
             };
             var order = new SimulatedOrder
             {
@@ -60,7 +64,7 @@ public class PortfolioSimulator : IPortfolioSimulator
                 ExecutedPrice = executedPrice,
                 Quantity = quantity,
                 FeeAmount = fee,
-                Timestamp = DateTime.UtcNow,
+                Timestamp = ts,
                 Reason = reason
             };
             _logger.LogInformation("BUY {Symbol} qty={Qty:F6} @ {Price:F2} reason={Reason}", symbol, quantity, executedPrice, reason);
@@ -68,19 +72,24 @@ public class PortfolioSimulator : IPortfolioSimulator
         }
     }
 
-    public SimulatedOrder? ExecuteSell(string symbol, decimal price, string reason)
+    public SimulatedOrder? ExecuteSell(string symbol, decimal price, string reason, DateTime? timestamp = null)
     {
         lock (_lock)
         {
             if (OpenPosition == null || !OpenPosition.IsOpen || OpenPosition.Symbol != symbol) return null;
+            var ts = timestamp ?? DateTime.UtcNow;
             var slippageMultiplier = 1m - (_config.SlippagePercent / 100m);
             var executedPrice = price * slippageMultiplier;
             var grossProceeds = OpenPosition.Quantity * executedPrice;
-            var fee = grossProceeds * (_config.FeePercent / 100m);
-            var netProceeds = grossProceeds - fee;
+            var exitFee = grossProceeds * (_config.FeePercent / 100m);
+            var netProceeds = grossProceeds - exitFee;
             var entryValue = OpenPosition.Quantity * OpenPosition.EntryPrice;
+            var grossPnl = (OpenPosition.Quantity * executedPrice) - entryValue;
+            var totalFees = OpenPosition.EntryFee + exitFee;
+            var slippageImpact = OpenPosition.SlippageImpact + (grossProceeds * (_config.SlippagePercent / 100m));
             var pnl = netProceeds - entryValue;
             var pnlPercent = entryValue > 0 ? (pnl / entryValue) * 100m : 0;
+            var holdingTime = ts - OpenPosition.EntryTime;
             var trade = new SimulatedTrade
             {
                 StrategyRunId = StrategyRunId,
@@ -88,12 +97,14 @@ public class PortfolioSimulator : IPortfolioSimulator
                 EntryPrice = OpenPosition.EntryPrice,
                 ExitPrice = executedPrice,
                 Quantity = OpenPosition.Quantity,
+                GrossPnL = grossPnl,
                 PnL = pnl,
                 PnLPercent = pnlPercent,
-                TotalFees = fee,
+                TotalFees = totalFees,
+                SlippageImpact = slippageImpact,
                 EntryTime = OpenPosition.EntryTime,
-                ExitTime = DateTime.UtcNow,
-                HoldingTime = DateTime.UtcNow - OpenPosition.EntryTime,
+                ExitTime = ts,
+                HoldingTime = holdingTime,
                 EntryReason = OpenPosition.EntryReason,
                 ExitReason = reason
             };
@@ -107,8 +118,8 @@ public class PortfolioSimulator : IPortfolioSimulator
                 RequestedPrice = price,
                 ExecutedPrice = executedPrice,
                 Quantity = trade.Quantity,
-                FeeAmount = fee,
-                Timestamp = DateTime.UtcNow,
+                FeeAmount = exitFee,
+                Timestamp = ts,
                 Reason = reason
             };
             OpenPosition = null;
@@ -135,9 +146,9 @@ public class PortfolioSimulator : IPortfolioSimulator
         }
     }
 
-    public EquityPoint GetEquityPoint() => new()
+    public EquityPoint GetEquityPoint(DateTime? timestamp = null) => new()
     {
-        Timestamp = DateTime.UtcNow,
+        Timestamp = timestamp ?? DateTime.UtcNow,
         Equity = GetEquity(),
         Cash = Cash,
         UnrealizedPnL = OpenPosition?.UnrealizedPnL ?? 0m

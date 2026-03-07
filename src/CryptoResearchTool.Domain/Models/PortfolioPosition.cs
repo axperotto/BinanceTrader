@@ -7,6 +7,10 @@ public class PortfolioPosition
     public decimal CurrentPrice { get; set; }
     public DateTime EntryTime { get; set; }
     public string EntryReason { get; set; } = "";
+    /// <summary>Fee paid on entry, tracked for complete trade cost calculation.</summary>
+    public decimal EntryFee { get; set; }
+    /// <summary>Cumulative slippage impact tracked for reporting.</summary>
+    public decimal SlippageImpact { get; set; }
     public bool IsOpen => Quantity > 0;
     public decimal UnrealizedPnL => IsOpen ? (CurrentPrice - EntryPrice) * Quantity : 0;
     public decimal UnrealizedPnLPercent => IsOpen && EntryPrice > 0 ? ((CurrentPrice - EntryPrice) / EntryPrice) * 100m : 0;

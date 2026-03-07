@@ -12,4 +12,10 @@ public class HistoricalAnalysisConfiguration
     public bool UseLocalCache { get; set; } = true;
     public bool ForceRefresh { get; set; } = false;
     public string CacheDirectory { get; set; } = "data/historical_cache";
+
+    /// <summary>
+    /// Controls whether all strategies share one symbol/timeframe (Global) or each uses
+    /// its own configured symbol and timeframe (PerStrategy).
+    /// </summary>
+    public HistoricalTestMode TestMode { get; set; } = HistoricalTestMode.Global;
 }
