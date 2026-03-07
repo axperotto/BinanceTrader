@@ -636,7 +636,7 @@ public partial class MainForm : Form
 
         var lines = new List<string>
         {
-            "Strategy,Symbol,EntryPrice,ExitPrice,Quantity,GrossPnL,NetPnL,PnLPercent,TotalFees,SlippageImpact,EntryTime,ExitTime,HoldingHours,EntryReason,ExitReason,ExitReasonCategory"
+            "Strategy,Symbol,EntryPrice,ExitPrice,Quantity,GrossPnL,NetPnL,PnLPercent,TotalFees,SlippageImpact,EntryTime,ExitTime,HoldingHours,EntryReason,ExitReason,ExitReasonCategory,IsPartialExit,PartialExitIndex,RemainingQuantityAfter,ManagementReason"
         };
         foreach (var runner in _runners)
             foreach (var t in runner.Portfolio.CompletedTrades)
@@ -656,7 +656,11 @@ public partial class MainForm : Form
                     t.HoldingTime.TotalHours.ToString("F2"),
                     CsvField(t.EntryReason),
                     CsvField(t.ExitReason),
-                    CsvField(t.ExitReasonCategory)));
+                    CsvField(t.ExitReasonCategory),
+                    t.IsPartialExit ? "1" : "0",
+                    t.PartialExitIndex.ToString(),
+                    t.RemainingQuantityAfter.ToString("F8"),
+                    CsvField(t.ManagementReason)));
 
         File.WriteAllLines(dlg.FileName, lines);
         AppendLog("INFO", $"Exported {lines.Count - 1} trades to {dlg.FileName}");

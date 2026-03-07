@@ -7,6 +7,12 @@ public static class ExitReasonCategory
     public const string StopLoss = "StopLoss";
     public const string TakeProfit = "TakeProfit";
     public const string ForcedCloseEndOfTest = "ForcedCloseEndOfTest";
+    /// <summary>A staged partial exit triggered when price reached a configured profit level.</summary>
+    public const string PartialTakeProfit = "PartialTakeProfit";
+    /// <summary>Remaining position closed after the trailing stop was hit.</summary>
+    public const string TrailingStop = "TrailingStop";
+    /// <summary>Remaining position closed after the break-even stop was hit.</summary>
+    public const string BreakEvenStop = "BreakEvenStop";
 }
 
 public class SimulatedTrade
@@ -29,7 +35,26 @@ public class SimulatedTrade
     public TimeSpan HoldingTime { get; set; }
     public string EntryReason { get; set; } = "";
     public string ExitReason { get; set; } = "";
-    /// <summary>Structured exit category: StrategySignal, StopLoss, TakeProfit, ForcedCloseEndOfTest.</summary>
+    /// <summary>Structured exit category: StrategySignal, StopLoss, TakeProfit, ForcedCloseEndOfTest,
+    /// PartialTakeProfit, TrailingStop, BreakEvenStop.</summary>
     public string ExitReasonCategory { get; set; } = Models.ExitReasonCategory.StrategySignal;
+
+    // ── Partial exit tracking ────────────────────────────────────────────────
+
+    /// <summary>True when this record is a partial exit (position still open with remaining quantity).</summary>
+    public bool IsPartialExit { get; set; }
+
+    /// <summary>Zero-based index of which partial take-profit level triggered this exit.</summary>
+    public int PartialExitIndex { get; set; }
+
+    /// <summary>Remaining open quantity after this exit event.</summary>
+    public decimal RemainingQuantityAfter { get; set; }
+
+    /// <summary>
+    /// Human-readable management reason for this exit event
+    /// (e.g. "PartialTP_1", "TrailingStop", "BreakEven").
+    /// </summary>
+    public string ManagementReason { get; set; } = "";
+
     public bool IsWinner => PnL > 0;
 }

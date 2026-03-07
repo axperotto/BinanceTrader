@@ -217,7 +217,15 @@ public class HistoricalBacktestEngine
                 Parameters = stratConfig.Parameters,
                 StopLossPercent = stratConfig.StopLossPercent,
                 TakeProfitPercent = stratConfig.TakeProfitPercent,
-                MinBarsBetweenTrades = stratConfig.MinBarsBetweenTrades
+                MinBarsBetweenTrades = stratConfig.MinBarsBetweenTrades,
+                BreakEvenTriggerPercent = stratConfig.BreakEvenTriggerPercent,
+                BreakEvenOffsetPercent = stratConfig.BreakEvenOffsetPercent,
+                TrailingStopActivationPercent = stratConfig.TrailingStopActivationPercent,
+                TrailingStopDistancePercent = stratConfig.TrailingStopDistancePercent,
+                PartialTakeProfitLevelsPercent = stratConfig.PartialTakeProfitLevelsPercent,
+                PartialTakeProfitExitPercent = stratConfig.PartialTakeProfitExitPercent,
+                AllowFinalSignalExit = stratConfig.AllowFinalSignalExit,
+                AllowTrendInvalidationExit = stratConfig.AllowTrendInvalidationExit
             };
 
             var strategy = StrategyFactory.Create(effective, simConfig);

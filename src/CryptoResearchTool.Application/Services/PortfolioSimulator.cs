@@ -48,12 +48,16 @@ public class PortfolioSimulator : IPortfolioSimulator
             {
                 Symbol = symbol,
                 Quantity = quantity,
+                InitialQuantity = quantity,
                 EntryPrice = executedPrice,
                 CurrentPrice = executedPrice,
                 EntryTime = ts,
                 EntryReason = reason,
                 EntryFee = fee,
-                SlippageImpact = slippageImpact
+                SlippageImpact = slippageImpact,
+                HighestPriceSinceEntry = executedPrice,
+                LowestPriceSinceEntry = executedPrice,
+                ManagementState = Domain.Models.PositionManagementState.Entered
             };
             var order = new SimulatedOrder
             {
@@ -124,6 +128,107 @@ public class PortfolioSimulator : IPortfolioSimulator
             };
             OpenPosition = null;
             _logger.LogInformation("SELL {Symbol} @ {Price:F2} PnL={PnL:F2} reason={Reason}", symbol, executedPrice, pnl, reason);
+            return order;
+        }
+    }
+
+    public SimulatedOrder? ExecutePartialSell(string symbol, decimal price, decimal fractionOfInitial,
+        string reasonCategory, string managementReason, int partialExitIndex, DateTime? timestamp = null)
+    {
+        lock (_lock)
+        {
+            if (OpenPosition == null || !OpenPosition.IsOpen || OpenPosition.Symbol != symbol) return null;
+
+            var ts = timestamp ?? DateTime.UtcNow;
+            var slippageMultiplier = 1m - (_config.SlippagePercent / 100m);
+            var executedPrice = price * slippageMultiplier;
+
+            // Quantity to sell: fraction of the initial position, capped at remaining
+            var qtyToSell = Math.Min(OpenPosition.InitialQuantity * fractionOfInitial, OpenPosition.Quantity);
+            if (qtyToSell <= 0) return null;
+
+            var grossProceeds = qtyToSell * executedPrice;
+            var exitFee = grossProceeds * (_config.FeePercent / 100m);
+            var netProceeds = grossProceeds - exitFee;
+            var costBasis = qtyToSell * OpenPosition.EntryPrice;
+            var grossPnl = (qtyToSell * executedPrice) - costBasis;
+
+            // Attribute a proportional share of the entry fee to this partial exit
+            var initialQty = OpenPosition.InitialQuantity > 0 ? OpenPosition.InitialQuantity : OpenPosition.Quantity;
+            var entryFeeForQty = OpenPosition.EntryFee * (qtyToSell / initialQty);
+            var totalFees = entryFeeForQty + exitFee;
+            var slippageImpact = price * qtyToSell * (_config.SlippagePercent / 100m) * 2m; // entry + exit share
+            var pnl = netProceeds - costBasis - entryFeeForQty;
+            var pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100m : 0;
+            var holdingTime = ts - OpenPosition.EntryTime;
+
+            // Update weighted average exit price on the position
+            var quantitySoldSoFar = OpenPosition.InitialQuantity - OpenPosition.Quantity;
+            if (quantitySoldSoFar <= 0)
+                OpenPosition.AverageExitPrice = executedPrice;
+            else
+                OpenPosition.AverageExitPrice =
+                    (OpenPosition.AverageExitPrice * quantitySoldSoFar + executedPrice * qtyToSell)
+                    / (quantitySoldSoFar + qtyToSell);
+
+            // Reduce remaining quantity and accumulate realized PnL
+            OpenPosition.Quantity -= qtyToSell;
+            OpenPosition.RealizedPnL += pnl;
+            Cash += netProceeds;
+
+            var isFullyExited = OpenPosition.Quantity <= 0;
+            var remainingQty = OpenPosition.Quantity;
+
+            var trade = new SimulatedTrade
+            {
+                StrategyRunId = StrategyRunId,
+                Symbol = symbol,
+                EntryPrice = OpenPosition.EntryPrice,
+                ExitPrice = executedPrice,
+                Quantity = qtyToSell,
+                GrossPnL = grossPnl,
+                PnL = pnl,
+                PnLPercent = pnlPercent,
+                TotalFees = totalFees,
+                SlippageImpact = slippageImpact,
+                EntryTime = OpenPosition.EntryTime,
+                ExitTime = ts,
+                HoldingTime = holdingTime,
+                EntryReason = OpenPosition.EntryReason,
+                ExitReason = managementReason,
+                ExitReasonCategory = reasonCategory,
+                IsPartialExit = !isFullyExited,
+                PartialExitIndex = partialExitIndex,
+                RemainingQuantityAfter = remainingQty,
+                ManagementReason = managementReason
+            };
+            CompletedTrades.Add(trade);
+
+            var order = new SimulatedOrder
+            {
+                StrategyRunId = StrategyRunId,
+                Symbol = symbol,
+                Side = OrderSide.Sell,
+                RequestedPrice = price,
+                ExecutedPrice = executedPrice,
+                Quantity = qtyToSell,
+                FeeAmount = exitFee,
+                Timestamp = ts,
+                Reason = managementReason
+            };
+
+            if (isFullyExited)
+            {
+                OpenPosition = null;
+                _logger.LogInformation("PARTIAL→FULL SELL {Symbol} qty={Qty:F6} @ {Price:F2} reason={Reason}",
+                    symbol, qtyToSell, executedPrice, managementReason);
+            }
+            else
+            {
+                _logger.LogInformation("PARTIAL SELL {Symbol} qty={Qty:F6} @ {Price:F2} remaining={Rem:F6} reason={Reason}",
+                    symbol, qtyToSell, executedPrice, remainingQty, managementReason);
+            }
+
             return order;
         }
     }

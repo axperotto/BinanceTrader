@@ -17,8 +17,10 @@ public class StrategyRunner
     private readonly SimulationConfiguration _simConfig;
     private readonly StrategyConfiguration _strategyConfig;
     private readonly ILogger _logger;
+    private readonly TradeManagementEngine _managementEngine;
 
-    // Stop loss / take profit prices for the current open position (0 = disabled)
+    // Stop loss / take profit prices for the current open position (0 = disabled).
+    // Used only when TradeManagementEngine.IsActive is false (legacy path).
     private decimal _stopLossPrice = 0m;
     private decimal _takeProfitPrice = 0m;
 
@@ -47,6 +49,7 @@ public class StrategyRunner
         _simConfig = simConfig;
         _strategyConfig = strategyConfig;
         _logger = logger;
+        _managementEngine = new TradeManagementEngine(strategyConfig);
     }
 
     /// <summary>
@@ -60,7 +63,8 @@ public class StrategyRunner
     }
 
     /// <summary>
-    /// Processes a closed candle: feeds data to strategy, checks SL/TP, evaluates signals.
+    /// Processes a closed candle: feeds data to strategy, runs trade management,
+    /// checks SL/TP, evaluates signals.
     /// </summary>
     public void OnCandle(Candle candle)
     {
@@ -81,12 +85,16 @@ public class StrategyRunner
         // Record equity snapshot for this bar (used for drawdown / Sharpe computation)
         RecordEquityPoint(candle.OpenTime);
 
-        // ── Stop Loss / Take Profit ──────────────────────────────────────────
-        // Check SL/TP before evaluating the strategy signal so that a forced exit
-        // cannot be overridden by a new signal on the same candle.
+        // ── Trade management / Stop Loss / Take Profit ────────────────────────
         if (Portfolio.OpenPosition != null && Portfolio.OpenPosition.IsOpen)
         {
-            if (TryTriggerStopLossTakeProfit(candle))
+            bool positionClosed;
+            if (_managementEngine.IsActive)
+                positionClosed = RunManagementEngine(candle);
+            else
+                positionClosed = TryTriggerStopLossTakeProfit(candle);
+
+            if (positionClosed)
                 return; // position has been closed; skip signal evaluation this bar
         }
 
@@ -110,9 +118,62 @@ public class StrategyRunner
     }
 
     /// <summary>
+    /// Runs the advanced trade management engine for the current candle.
+    /// Returns true when the position has been fully closed this bar.
+    /// </summary>
+    private bool RunManagementEngine(Candle candle)
+    {
+        var position = Portfolio.OpenPosition!;
+        var actions = _managementEngine.ProcessBar(position, candle, _totalBars);
+        if (actions.Count == 0) return false;
+
+        bool positionClosed = false;
+        foreach (var action in actions)
+        {
+            if (!Portfolio.OpenPosition?.IsOpen ?? true)
+            {
+                positionClosed = true;
+                break;
+            }
+
+            if (action.Type == ManagementActionType.PartialExit)
+            {
+                var order = Portfolio.ExecutePartialSell(
+                    Strategy.Symbol, action.Price, action.FractionToSell,
+                    action.ReasonCategory, action.ManagementReason, action.PartialExitIndex,
+                    candle.OpenTime);
+
+                if (order != null)
+                {
+                    CurrentMetrics.SignalsExecuted++;
+                    var trade = Portfolio.CompletedTrades.LastOrDefault();
+                    if (trade != null)
+                        _ = _repository.SaveTradeAsync(trade);
+
+                    if (Portfolio.OpenPosition == null || !Portfolio.OpenPosition.IsOpen)
+                    {
+                        positionClosed = true;
+                        OnPositionClosed();
+                        break;
+                    }
+                }
+            }
+            else if (action.Type == ManagementActionType.FullExit)
+            {
+                ExecuteClose(action.Price, action.ReasonCategory, candle.OpenTime);
+                positionClosed = true;
+                break;
+            }
+        }
+
+        return positionClosed;
+    }
+
+    /// <summary>
     /// Checks whether the current open position should be closed by a stop loss or take profit
     /// triggered by this candle's price action. Uses pessimistic execution for ties
     /// (stop loss wins, which is worse for the trader).
+    /// Only used when TradeManagementEngine.IsActive is false.
     /// </summary>
     private bool TryTriggerStopLossTakeProfit(Candle candle)
     {
@@ -151,15 +212,38 @@ public class StrategyRunner
             if (order != null)
             {
                 CurrentMetrics.SignalsExecuted++;
-                // Set SL/TP target prices from the executed (slippage-adjusted) entry price
-                SetStopLossTakeProfitPrices(order.ExecutedPrice);
+                // Compute initial stop loss price from strategy config
+                var initialStop = _strategyConfig.StopLossPercent > 0
+                    ? order.ExecutedPrice * (1m - _strategyConfig.StopLossPercent / 100m)
+                    : 0m;
+
+                if (_managementEngine.IsActive)
+                {
+                    // Initialise position-level management state
+                    _managementEngine.OnPositionOpened(Portfolio.OpenPosition!, initialStop);
+                    // Also clear the legacy SL/TP fields
+                    _stopLossPrice = 0m;
+                    _takeProfitPrice = 0m;
+                }
+                else
+                {
+                    // Legacy path: set SL/TP on the runner
+                    SetStopLossTakeProfitPrices(order.ExecutedPrice);
+                }
+
                 _barsSinceLastTrade = 0;
             }
         }
         else if (signal.Type == SignalType.Sell &&
                  Portfolio.OpenPosition != null && Portfolio.OpenPosition.IsOpen)
         {
-            ExecuteClose(price, ExitReasonCategory.StrategySignal, candleTime);
+            // When management engine is active, respect AllowFinalSignalExit / AllowTrendInvalidationExit
+            bool allowExit = !_managementEngine.IsActive
+                || _strategyConfig.AllowFinalSignalExit
+                || _strategyConfig.AllowTrendInvalidationExit;
+
+            if (allowExit)
+                ExecuteClose(price, ExitReasonCategory.StrategySignal, candleTime);
         }
     }
 
