@@ -1,0 +1,81 @@
+{
+  "Simulation": {
+    "InitialCapital": 1000.0,
+    "FeePercent": 0.1,
+    "SlippagePercent": 0.05,
+    "DefaultPositionSizePercent": 100.0
+  },
+  "Symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+    "XRPUSDT"
+  ],
+  "Strategies": [
+    {
+      "Type": "MovingAverageCrossover",
+      "Name": "MA_BTC_5_20",
+      "Symbol": "BTCUSDT",
+      "Timeframe": "1m",
+      "Enabled": true,
+      "Parameters": {
+        "FastPeriod": 5,
+        "SlowPeriod": 20,
+        "StopLossPercent": 1.5,
+        "TakeProfitPercent": 3.0,
+        "PositionSizePercent": 100.0
+      }
+    },
+    {
+      "Type": "RsiMeanReversion",
+      "Name": "RSI_ETH_14",
+      "Symbol": "ETHUSDT",
+      "Timeframe": "1m",
+      "Enabled": true,
+      "Parameters": {
+        "RsiPeriod": 14,
+        "Oversold": 30,
+        "Overbought": 70,
+        "TrendFilterEnabled": false,
+        "StopLossPercent": 1.2,
+        "TakeProfitPercent": 2.5
+      }
+    },
+    {
+      "Type": "Breakout",
+      "Name": "Breakout_BNB_20",
+      "Symbol": "BNBUSDT",
+      "Timeframe": "5m",
+      "Enabled": true,
+      "Parameters": {
+        "LookbackBars": 20,
+        "BreakoutThresholdPercent": 0.5,
+        "StopLossPercent": 1.5,
+        "TakeProfitPercent": 3.0
+      }
+    },
+    {
+      "Type": "Momentum",
+      "Name": "Momentum_SOL_10",
+      "Symbol": "SOLUSDT",
+      "Timeframe": "5m",
+      "Enabled": true,
+      "Parameters": {
+        "LookbackBars": 10,
+        "EntryThresholdPercent": 1.0,
+        "ExitThresholdPercent": 0.0,
+        "StopLossPercent": 2.0,
+        "TakeProfitPercent": 4.0
+      }
+    },
+    {
+      "Type": "BuyAndHold",
+      "Name": "BuyAndHold_BTC",
+      "Symbol": "BTCUSDT",
+      "Timeframe": "1m",
+      "Enabled": true,
+      "Parameters": {}
+    }
+  ]
+}
