@@ -262,7 +262,7 @@ public partial class OptimizerForm : Form
     {
         var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(4) };
 
-        var titleLabel = SectionLabel("Parameter Ranges  (check parameters to include in search)", 0, 0);
+        var titleLabel = SectionLabel("Parameter Ranges (check parameters to include in search)", 0, 0);
         titleLabel.Dock = DockStyle.Top;
         panel.Controls.Add(titleLabel);
 
