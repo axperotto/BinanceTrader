@@ -7,9 +7,9 @@ public interface IPortfolioSimulator
     decimal InitialCapital { get; }
     PortfolioPosition? OpenPosition { get; }
     List<SimulatedTrade> CompletedTrades { get; }
-    SimulatedOrder? ExecuteBuy(string symbol, decimal price, decimal positionSizePercent, string reason);
-    SimulatedOrder? ExecuteSell(string symbol, decimal price, string reason);
+    SimulatedOrder? ExecuteBuy(string symbol, decimal price, decimal positionSizePercent, string reason, DateTime? timestamp = null);
+    SimulatedOrder? ExecuteSell(string symbol, decimal price, string reason, DateTime? timestamp = null);
     void UpdateCurrentPrice(string symbol, decimal price);
     decimal GetEquity();
-    EquityPoint GetEquityPoint();
+    EquityPoint GetEquityPoint(DateTime? timestamp = null);
 }
