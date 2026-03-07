@@ -157,7 +157,10 @@ public class PortfolioSimulator : IPortfolioSimulator
             var initialQty = OpenPosition.InitialQuantity > 0 ? OpenPosition.InitialQuantity : OpenPosition.Quantity;
             var entryFeeForQty = OpenPosition.EntryFee * (qtyToSell / initialQty);
             var totalFees = entryFeeForQty + exitFee;
-            var slippageImpact = price * qtyToSell * (_config.SlippagePercent / 100m) * 2m; // entry + exit share
+            // Slippage: proportional entry slippage + exit slippage for this quantity
+            var entrySlippageForQty = OpenPosition.SlippageImpact * (qtyToSell / initialQty);
+            var exitSlippage = grossProceeds * (_config.SlippagePercent / 100m);
+            var slippageImpact = entrySlippageForQty + exitSlippage;
             var pnl = netProceeds - costBasis - entryFeeForQty;
             var pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100m : 0;
             var holdingTime = ts - OpenPosition.EntryTime;

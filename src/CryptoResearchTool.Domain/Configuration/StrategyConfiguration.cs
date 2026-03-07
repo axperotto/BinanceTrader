@@ -112,6 +112,8 @@ public class StrategyConfiguration
         }
         if (PartialTakeProfitExitPercent.Count > 0 && PartialTakeProfitExitPercent.Sum() > 100m)
         {
+            // Exit percentages cannot exceed 100% of the original position.
+            // A sum of exactly 100% is valid (all profit taken via partial exits; nothing left for trailing).
             PartialTakeProfitLevelsPercent.Clear();
             PartialTakeProfitExitPercent.Clear();
         }

@@ -133,6 +133,8 @@ public class TradeManagementEngine
         var targets = _cfg.PartialTakeProfitLevelsPercent;
         var exits = _cfg.PartialTakeProfitExitPercent;
 
+        // NOTE: targets must be in ascending order — enforced by StrategyConfiguration.Normalize().
+        // The break below relies on this ordering to avoid unnecessary checks.
         for (int i = position.PartialTargetsHit; i < targets.Count; i++)
         {
             var targetPrice = position.EntryPrice * (1m + targets[i] / 100m);
@@ -228,7 +230,11 @@ public class TradeManagementEngine
             managementReason = $"StopLoss@{position.StopLossPrice:F2}";
         }
 
-        // Pessimistic fill: if candle gaps below the stop, fill at the open (worse than stop)
+        // Pessimistic fill logic:
+        // - Normal case (open > stop): fill at stop price → Math.Min(open, stop) = stop ✓
+        // - Gap-down (open ≤ stop): candle opened below stop; fill at open (worse for trader) ✓
+        // candle.Low ≤ candle.Open ≤ candle.High by definition, so Math.Min(open, stop)
+        // is equivalent to and simpler than Math.Max(low, Math.Min(open, stop)).
         var exitPrice = Math.Min(candle.Open, position.StopLossPrice);
 
         actions.Add(new ManagementAction

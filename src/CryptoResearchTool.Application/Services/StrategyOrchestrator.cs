@@ -237,7 +237,11 @@ public class StrategyRunner
         else if (signal.Type == SignalType.Sell &&
                  Portfolio.OpenPosition != null && Portfolio.OpenPosition.IsOpen)
         {
-            // When management engine is active, respect AllowFinalSignalExit / AllowTrendInvalidationExit
+            // When management engine is active, respect AllowFinalSignalExit / AllowTrendInvalidationExit.
+            // Note: strategies currently emit a generic SignalType.Sell without distinguishing between
+            // "final signal exit" and "trend invalidation". Both flags are therefore OR-combined here.
+            // If either is true, sell signals can close the remaining position.
+            // To block all signal-based exits and rely solely on the trailing/break-even stop, set both to false.
             bool allowExit = !_managementEngine.IsActive
                 || _strategyConfig.AllowFinalSignalExit
                 || _strategyConfig.AllowTrendInvalidationExit;
