@@ -608,6 +608,12 @@ public partial class MainForm : Form
         try { System.Diagnostics.Process.Start("explorer.exe", dir); } catch { }
     }
 
+    /// <summary>Escapes a field value for safe CSV inclusion.</summary>
+    private static string CsvField(string s) =>
+        s.Contains(',') || s.Contains('"') || s.Contains('\n')
+            ? $"\"{s.Replace("\"", "\"\"")}\""
+            : s;
+
     private void ExportTradesCsv()
     {
         if (!_runners.Any())
@@ -617,10 +623,6 @@ public partial class MainForm : Form
         }
         using var dlg = new SaveFileDialog { Filter = "CSV|*.csv", FileName = $"trades_{DateTime.Now:yyyyMMdd_HHmmss}.csv" };
         if (dlg.ShowDialog() != DialogResult.OK) return;
-
-        static string CsvField(string s) => s.Contains(',') || s.Contains('"') || s.Contains('\n')
-            ? $"\"{s.Replace("\"", "\"\"")}\""
-            : s;
 
         var lines = new List<string>
         {
@@ -659,10 +661,6 @@ public partial class MainForm : Form
         }
         using var dlg = new SaveFileDialog { Filter = "CSV|*.csv", FileName = $"equity_{DateTime.Now:yyyyMMdd_HHmmss}.csv" };
         if (dlg.ShowDialog() != DialogResult.OK) return;
-
-        static string CsvField(string s) => s.Contains(',') || s.Contains('"') || s.Contains('\n')
-            ? $"\"{s.Replace("\"", "\"\"")}\""
-            : s;
 
         var lines = new List<string> { "Strategy,Timestamp,Equity,Cash,UnrealizedPnL" };
         foreach (var runner in _runners)

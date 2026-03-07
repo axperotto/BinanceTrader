@@ -124,12 +124,16 @@ public class StrategyRunner
         // Pessimistic tie-break: if both levels are hit in the same candle, assume stop loss fired first
         if (slHit)
         {
-            // Execution at the stop price (may be worse than candle open if price gapped)
+            // Stop loss fill logic (pessimistic):
+            // - Normal case: candle opens above stop → fill at the stop price (Math.Min(open, stop) = stop)
+            // - Gap-down case: candle opens below stop → fill at candle open (worse than the stop)
+            // This correctly models slippage through the stop level in fast-moving markets.
             var exitPrice = Math.Min(candle.Open, _stopLossPrice);
             ExecuteClose(exitPrice, ExitReasonCategory.StopLoss, candle.OpenTime);
         }
         else
         {
+            // Take profit fill: use Max(open, takeProfit) so gap-up benefits are captured at open.
             var exitPrice = Math.Max(candle.Open, _takeProfitPrice);
             ExecuteClose(exitPrice, ExitReasonCategory.TakeProfit, candle.OpenTime);
         }
@@ -215,10 +219,10 @@ public class StrategyRunner
     /// </summary>
     public async Task UpdateMetricsAsync()
     {
-        // Save the final equity snapshot to the repository
+        // Always record the final equity state (after any forced position close).
+        // This ensures the equity curve reflects the actual end-of-test portfolio value.
         var finalEp = Portfolio.GetEquityPoint();
-        if (EquityHistory.Count == 0)
-            EquityHistory.Add(finalEp);
+        EquityHistory.Add(finalEp);
         await _repository.SaveEquityPointAsync(StrategyRunId, finalEp);
 
         var exposurePercent = _totalBars > 0 ? (decimal)_barsInPosition / _totalBars * 100m : 0m;
