@@ -20,6 +20,56 @@ public class StrategyConfiguration
     /// </summary>
     public int MinBarsBetweenTrades { get; set; } = 0;
 
+    // ── Advanced trade management ────────────────────────────────────────────
+
+    /// <summary>
+    /// Profit percentage above entry at which the protective stop is moved to break-even.
+    /// 0 = disabled.
+    /// </summary>
+    public decimal BreakEvenTriggerPercent { get; set; } = 0m;
+
+    /// <summary>
+    /// Additional percentage offset above entry when setting the break-even stop
+    /// (e.g. 0.2 = entry + 0.2%). Only used when BreakEvenTriggerPercent > 0.
+    /// </summary>
+    public decimal BreakEvenOffsetPercent { get; set; } = 0m;
+
+    /// <summary>
+    /// Profit percentage above entry at which the trailing stop activates. 0 = disabled.
+    /// </summary>
+    public decimal TrailingStopActivationPercent { get; set; } = 0m;
+
+    /// <summary>
+    /// Distance below the highest-since-entry price for the trailing stop (as a percentage).
+    /// Requires TrailingStopActivationPercent to be set. 0 = disabled.
+    /// </summary>
+    public decimal TrailingStopDistancePercent { get; set; } = 0m;
+
+    /// <summary>
+    /// Profit percentage levels at which staged partial exits are executed
+    /// (e.g. [2.0, 4.0, 7.0]). Must match the length of PartialTakeProfitExitPercent.
+    /// </summary>
+    public List<decimal> PartialTakeProfitLevelsPercent { get; set; } = new();
+
+    /// <summary>
+    /// Percentage of the ORIGINAL position to exit at each partial level
+    /// (e.g. [25.0, 25.0, 25.0]). Must match the length of PartialTakeProfitLevelsPercent.
+    /// The sum should not exceed 100; any remainder stays open for trailing / final exit.
+    /// </summary>
+    public List<decimal> PartialTakeProfitExitPercent { get; set; } = new();
+
+    /// <summary>
+    /// When true, a strategy sell signal can close the remaining open position even when
+    /// partial exits are configured. Default: true.
+    /// </summary>
+    public bool AllowFinalSignalExit { get; set; } = true;
+
+    /// <summary>
+    /// When true, a trend-invalidation signal from the strategy closes the remaining position.
+    /// Default: true.
+    /// </summary>
+    public bool AllowTrendInvalidationExit { get; set; } = true;
+
     public T GetParameter<T>(string key, T defaultValue)
     {
         if (Parameters.TryGetValue(key, out var val))
@@ -52,6 +102,30 @@ public class StrategyConfiguration
         if (MinBarsBetweenTrades == 0 && Parameters.TryGetValue("MinBarsBetweenTrades", out var mbt))
         {
             try { MinBarsBetweenTrades = Convert.ToInt32(mbt); } catch (Exception) { }
+        }
+        // Validate partial take profit arrays: both lists must have the same length
+        // and the exit percentages must not exceed 100 % in total.
+        if (PartialTakeProfitLevelsPercent.Count != PartialTakeProfitExitPercent.Count)
+        {
+            PartialTakeProfitLevelsPercent.Clear();
+            PartialTakeProfitExitPercent.Clear();
+        }
+        if (PartialTakeProfitExitPercent.Count > 0 && PartialTakeProfitExitPercent.Sum() > 100m)
+        {
+            // Exit percentages cannot exceed 100% of the original position.
+            // A sum of exactly 100% is valid (all profit taken via partial exits; nothing left for trailing).
+            PartialTakeProfitLevelsPercent.Clear();
+            PartialTakeProfitExitPercent.Clear();
+        }
+        // Sort levels in ascending order (required for stage-by-stage evaluation).
+        if (PartialTakeProfitLevelsPercent.Count > 1)
+        {
+            var pairs = PartialTakeProfitLevelsPercent
+                .Zip(PartialTakeProfitExitPercent, (l, e) => (Level: l, Exit: e))
+                .OrderBy(p => p.Level)
+                .ToList();
+            PartialTakeProfitLevelsPercent = pairs.Select(p => p.Level).ToList();
+            PartialTakeProfitExitPercent = pairs.Select(p => p.Exit).ToList();
         }
     }
 }

@@ -47,7 +47,10 @@ public class StrategyDetailForm : Form
             new DataGridViewTextBoxColumn { Name = "colQty", HeaderText = "Quantity", FillWeight = 80 },
             new DataGridViewTextBoxColumn { Name = "colPnL", HeaderText = "PnL ($)", FillWeight = 70 },
             new DataGridViewTextBoxColumn { Name = "colPnLPct", HeaderText = "PnL %", FillWeight = 60 },
-            new DataGridViewTextBoxColumn { Name = "colReason", HeaderText = "Reason", FillWeight = 150 }
+            new DataGridViewTextBoxColumn { Name = "colPartial", HeaderText = "Partial", FillWeight = 50 },
+            new DataGridViewTextBoxColumn { Name = "colRemaining", HeaderText = "Remaining Qty", FillWeight = 80 },
+            new DataGridViewTextBoxColumn { Name = "colMgmtReason", HeaderText = "Management Reason", FillWeight = 130 },
+            new DataGridViewTextBoxColumn { Name = "colReason", HeaderText = "Exit Category", FillWeight = 110 }
         );
         tabTrades.Controls.Add(tradesGrid);
 
@@ -110,10 +113,36 @@ public class StrategyDetailForm : Form
                 $"{t.Quantity:F6}",
                 $"{t.PnL:F2}",
                 $"{t.PnLPercent:F2}%",
+                t.IsPartialExit ? $"Yes (#{t.PartialExitIndex + 1})" : "No",
+                t.IsPartialExit ? $"{t.RemainingQuantityAfter:F6}" : "-",
+                string.IsNullOrEmpty(t.ManagementReason) ? "-" : t.ManagementReason,
                 t.ExitReasonCategory
             );
-            tradesGrid.Rows[tradesGrid.Rows.Count - 1].DefaultCellStyle.BackColor =
-                t.IsWinner ? Color.FromArgb(220, 255, 220) : Color.FromArgb(255, 220, 220);
+            var row = tradesGrid.Rows[tradesGrid.Rows.Count - 1];
+            if (t.IsPartialExit)
+                row.DefaultCellStyle.BackColor = Color.FromArgb(220, 240, 255); // light blue for partial exits
+            else
+                row.DefaultCellStyle.BackColor = t.IsWinner
+                    ? Color.FromArgb(220, 255, 220)
+                    : Color.FromArgb(255, 220, 220);
+        }
+
+        // Show current open position management state if any
+        var pos = _runner.Portfolio.OpenPosition;
+        if (pos != null && pos.IsOpen)
+        {
+            metricsGrid.Rows.Add("", "");
+            metricsGrid.Rows.Add("── Open Position ──", "");
+            metricsGrid.Rows.Add("Management State", pos.ManagementState.ToString());
+            metricsGrid.Rows.Add("Remaining Qty", $"{pos.Quantity:F6}");
+            metricsGrid.Rows.Add("Initial Qty", $"{pos.InitialQuantity:F6}");
+            metricsGrid.Rows.Add("Realized PnL", $"${pos.RealizedPnL:F2}");
+            metricsGrid.Rows.Add("Unrealized PnL", $"${pos.UnrealizedPnL:F2}");
+            metricsGrid.Rows.Add("Protected Stop", pos.StopLossPrice > 0 ? $"{pos.StopLossPrice:F2}" : "None");
+            metricsGrid.Rows.Add("Break-Even Active", pos.BreakEvenActivated ? "Yes" : "No");
+            metricsGrid.Rows.Add("Trailing Active", pos.TrailingStopActive ? $"Yes @ {pos.TrailingStopPrice:F2}" : "No");
+            metricsGrid.Rows.Add("Partial Targets Hit", $"{pos.PartialTargetsHit}");
+            metricsGrid.Rows.Add("Highest Since Entry", $"{pos.HighestPriceSinceEntry:F2}");
         }
     }
 }

@@ -88,6 +88,30 @@
       "Timeframe": "1m",
       "Enabled": true,
       "Parameters": {}
+    },
+    {
+      "Type": "Breakout",
+      "Name": "Breakout_BTC_TrendManaged",
+      "Symbol": "BTCUSDT",
+      "Timeframe": "1h",
+      "Enabled": false,
+      "StopLossPercent": 2.5,
+      "MinBarsBetweenTrades": 6,
+      "BreakEvenTriggerPercent": 2.0,
+      "BreakEvenOffsetPercent": 0.2,
+      "TrailingStopActivationPercent": 3.0,
+      "TrailingStopDistancePercent": 2.0,
+      "PartialTakeProfitLevelsPercent": [ 2.0, 4.0, 7.0 ],
+      "PartialTakeProfitExitPercent": [ 25.0, 25.0, 25.0 ],
+      "AllowFinalSignalExit": true,
+      "AllowTrendInvalidationExit": true,
+      "Parameters": {
+        "LookbackBars": 30,
+        "BreakoutThresholdPercent": 0.7,
+        "TrendFilterPeriod": 100,
+        "ConfirmationBars": 2,
+        "ExitOnCloseBelowChannel": true
+      }
     }
   ]
 }
