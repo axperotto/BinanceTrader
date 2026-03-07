@@ -89,7 +89,11 @@ internal static class Program
                     if (stratConfig.Symbols?.Count > 0)
                         appConfig.Symbols = stratConfig.Symbols;
                     if (stratConfig.Strategies?.Count > 0)
+                    {
+                        foreach (var s in stratConfig.Strategies)
+                            s.Normalize();
                         appConfig.Strategies = stratConfig.Strategies;
+                    }
                 }
             }
             catch (Exception ex)

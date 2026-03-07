@@ -7,6 +7,14 @@ public class RsiMeanReversionStrategy : BaseStrategy
     private readonly int _rsiPeriod;
     private readonly decimal _oversold;
     private readonly decimal _overbought;
+    private readonly bool _trendFilterEnabled;
+    private readonly int _trendFilterPeriod;
+    // ExitRsiLevel: sell when RSI recovers above this level (e.g. 50 or 55).
+    // 0 = use overbought threshold only.
+    private readonly decimal _exitRsiLevel;
+
+    private bool _inPosition = false;
+
     public override string Name { get; }
 
     public RsiMeanReversionStrategy(StrategyConfiguration config, SimulationConfiguration simConfig)
@@ -16,6 +24,9 @@ public class RsiMeanReversionStrategy : BaseStrategy
         _rsiPeriod = config.GetParameter("RsiPeriod", 14);
         _oversold = config.GetParameter("Oversold", 30m);
         _overbought = config.GetParameter("Overbought", 70m);
+        _trendFilterEnabled = config.GetParameter("TrendFilterEnabled", false);
+        _trendFilterPeriod = config.GetParameter("TrendFilterPeriod", 50);
+        _exitRsiLevel = config.GetParameter("ExitRsiLevel", 0m);
     }
 
     private decimal CalculateRsi()
@@ -37,15 +48,45 @@ public class RsiMeanReversionStrategy : BaseStrategy
         return 100m - (100m / (1m + rs));
     }
 
+    private bool IsTrendBullish()
+    {
+        if (!_trendFilterEnabled || _trendFilterPeriod <= 0) return true;
+        if (CandleHistory.Count < _trendFilterPeriod) return true; // not enough data – allow
+        var closes = CandleHistory.Select(c => c.Close).ToList();
+        var trendMa = closes.TakeLast(_trendFilterPeriod).Average();
+        return closes.Last() >= trendMa;
+    }
+
     public override StrategySignal? Evaluate()
     {
         if (CandleHistory.Count < _rsiPeriod + 1) return null;
         var rsi = CalculateRsi();
         StrategySignal? signal = null;
-        if (rsi < _oversold)
-            signal = CreateSignal(SignalType.Buy, LastPrice, $"RSI_Oversold({rsi:F1})");
-        else if (rsi > _overbought)
-            signal = CreateSignal(SignalType.Sell, LastPrice, $"RSI_Overbought({rsi:F1})");
+
+        if (!_inPosition)
+        {
+            // Entry: RSI oversold AND trend filter allows it
+            if (rsi < _oversold && IsTrendBullish())
+            {
+                _inPosition = true;
+                signal = CreateSignal(SignalType.Buy, LastPrice, $"RSI_Oversold({rsi:F1})");
+            }
+        }
+        else
+        {
+            // Exit: RSI overbought OR RSI has recovered above the configurable exit level
+            bool exitOnOverbought = rsi > _overbought;
+            bool exitOnRecovery = _exitRsiLevel > 0 && rsi >= _exitRsiLevel;
+            if (exitOnOverbought || exitOnRecovery)
+            {
+                _inPosition = false;
+                var reason = exitOnOverbought
+                    ? $"RSI_Overbought({rsi:F1})"
+                    : $"RSI_Recovery({rsi:F1}>={_exitRsiLevel})";
+                signal = CreateSignal(SignalType.Sell, LastPrice, reason);
+            }
+        }
+
         if (signal != null) _lastSignal = signal;
         return signal;
     }

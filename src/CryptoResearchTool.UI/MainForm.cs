@@ -157,16 +157,26 @@ public partial class MainForm : Form
         };
         _rbGlobalTest = new RadioButton
         {
-            Text = "Global test (same symbol/TF for all strategies)",
-            Left = cx, Top = 80, Width = 320, Checked = true,
+            Text = "Global (all strategies use Symbol/TF above)",
+            Left = cx, Top = 80, Width = 300, Checked = true,
             Font = new Font("Segoe UI", 8.5f)
         };
         _rbPerStrategyTest = new RadioButton
         {
-            Text = "Per-strategy test (each strategy uses its own symbol/TF)",
-            Left = cx + 330, Top = 80, Width = 380,
+            Text = "Per-strategy (each strategy uses its own Symbol/TF from strategies.json)",
+            Left = cx + 310, Top = 80, Width = 420,
             Font = new Font("Segoe UI", 8.5f)
         };
+
+        // Tooltips explaining the test modes
+        var toolTip = new ToolTip { AutoPopDelay = 8000, InitialDelay = 400, ReshowDelay = 200 };
+        toolTip.SetToolTip(_rbGlobalTest,
+            "Global mode: every enabled strategy is backtested on the same Symbol and Timeframe\n" +
+            "selected above. The strategy's own Symbol/Timeframe fields are ignored.");
+        toolTip.SetToolTip(_rbPerStrategyTest,
+            "Per-strategy mode: each strategy uses the Symbol and Timeframe configured in\n" +
+            "strategies.json. Strategies with a blank Symbol/Timeframe fall back to the global values.\n" +
+            "Strategies sharing the same Symbol/Timeframe share a single data download.");
 
         _historicalConfigPanel.Controls.AddRange(new Control[]
         {

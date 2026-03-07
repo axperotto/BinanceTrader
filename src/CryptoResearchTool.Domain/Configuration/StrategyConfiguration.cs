@@ -29,4 +29,29 @@ public class StrategyConfiguration
         }
         return defaultValue;
     }
+
+    /// <summary>
+    /// Normalizes the configuration by promoting legacy parameter values stored inside
+    /// <see cref="Parameters"/> to the corresponding top-level properties when the
+    /// top-level property is still at its default (zero) value.
+    /// This provides backward compatibility with strategies.json files that embed
+    /// StopLossPercent / TakeProfitPercent / MinBarsBetweenTrades inside Parameters.
+    /// </summary>
+    public void Normalize()
+    {
+        if (StopLossPercent == 0 && Parameters.TryGetValue("StopLossPercent", out var sl))
+        {
+            // Best-effort conversion: mirrors the same pattern as GetParameter<T>.
+            // Invalid values are silently skipped to avoid crashing on malformed config.
+            try { StopLossPercent = Convert.ToDecimal(sl); } catch (Exception) { }
+        }
+        if (TakeProfitPercent == 0 && Parameters.TryGetValue("TakeProfitPercent", out var tp))
+        {
+            try { TakeProfitPercent = Convert.ToDecimal(tp); } catch (Exception) { }
+        }
+        if (MinBarsBetweenTrades == 0 && Parameters.TryGetValue("MinBarsBetweenTrades", out var mbt))
+        {
+            try { MinBarsBetweenTrades = Convert.ToInt32(mbt); } catch (Exception) { }
+        }
+    }
 }

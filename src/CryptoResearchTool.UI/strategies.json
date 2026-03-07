@@ -19,11 +19,13 @@
       "Symbol": "BTCUSDT",
       "Timeframe": "1m",
       "Enabled": true,
+      "StopLossPercent": 1.5,
+      "TakeProfitPercent": 3.0,
+      "MinBarsBetweenTrades": 3,
       "Parameters": {
         "FastPeriod": 5,
         "SlowPeriod": 20,
-        "StopLossPercent": 1.5,
-        "TakeProfitPercent": 3.0,
+        "TrendFilterPeriod": 50,
         "PositionSizePercent": 100.0
       }
     },
@@ -33,13 +35,16 @@
       "Symbol": "ETHUSDT",
       "Timeframe": "1m",
       "Enabled": true,
+      "StopLossPercent": 1.2,
+      "TakeProfitPercent": 2.5,
+      "MinBarsBetweenTrades": 2,
       "Parameters": {
         "RsiPeriod": 14,
         "Oversold": 30,
         "Overbought": 70,
-        "TrendFilterEnabled": false,
-        "StopLossPercent": 1.2,
-        "TakeProfitPercent": 2.5
+        "TrendFilterEnabled": true,
+        "TrendFilterPeriod": 50,
+        "ExitRsiLevel": 55
       }
     },
     {
@@ -48,11 +53,15 @@
       "Symbol": "BNBUSDT",
       "Timeframe": "5m",
       "Enabled": true,
+      "StopLossPercent": 1.5,
+      "TakeProfitPercent": 3.0,
+      "MinBarsBetweenTrades": 2,
       "Parameters": {
         "LookbackBars": 20,
         "BreakoutThresholdPercent": 0.5,
-        "StopLossPercent": 1.5,
-        "TakeProfitPercent": 3.0
+        "TrendFilterPeriod": 50,
+        "ConfirmationBars": 2,
+        "ExitOnCloseBelowChannel": true
       }
     },
     {
@@ -61,12 +70,15 @@
       "Symbol": "SOLUSDT",
       "Timeframe": "5m",
       "Enabled": true,
+      "StopLossPercent": 2.0,
+      "TakeProfitPercent": 4.0,
+      "MinBarsBetweenTrades": 3,
       "Parameters": {
         "LookbackBars": 10,
         "EntryThresholdPercent": 1.0,
-        "ExitThresholdPercent": 0.0,
-        "StopLossPercent": 2.0,
-        "TakeProfitPercent": 4.0
+        "ExitThresholdPercent": -0.5,
+        "TrendFilterPeriod": 30,
+        "ConfirmationBars": 2
       }
     },
     {
