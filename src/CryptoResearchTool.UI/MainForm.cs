@@ -36,6 +36,7 @@ public partial class MainForm : Form
     private Button _btnExportCsv = null!;
     private Button _btnExportEquity = null!;
     private Button _btnOptimizer = null!;
+    private Button _btnStrategyLab = null!;
     private StatusStrip _statusStrip = null!;
     private ToolStripStatusLabel _tsslConnection = null!;
     private ToolStripStatusLabel _tsslMode = null!;
@@ -97,10 +98,11 @@ public partial class MainForm : Form
         _btnExportCsv = new Button { Text = "📊 Trades CSV", Width = 120, Height = 36, Left = 332, Top = 12, FlatStyle = FlatStyle.Flat };
         _btnExportEquity = new Button { Text = "📈 Equity CSV", Width = 120, Height = 36, Left = 460, Top = 12, FlatStyle = FlatStyle.Flat };
         _btnOptimizer = new Button { Text = "⚙ Optimizer", Width = 110, Height = 36, Left = 588, Top = 12, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(108, 117, 125), ForeColor = Color.White };
-        _lblRunName = new Label { Text = "Run: -", AutoSize = true, Left = 714, Top = 20, Font = new Font("Segoe UI", 9f) };
-        _lblUptime = new Label { Text = "Uptime: 00:00:00", AutoSize = true, Left = 908, Top = 20, Font = new Font("Segoe UI", 9f) };
-        _lblStatus = new Label { Text = "", AutoSize = true, Left = 1108, Top = 20, Font = new Font("Segoe UI", 9f) };
-        topPanel.Controls.AddRange(new Control[] { _btnStart, _btnStop, _btnOpenFolder, _btnExportCsv, _btnExportEquity, _btnOptimizer, _lblRunName, _lblUptime, _lblStatus });
+        _btnStrategyLab = new Button { Text = "🧪 Strategy Lab", Width = 120, Height = 36, Left = 706, Top = 12, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(0, 122, 204), ForeColor = Color.White };
+        _lblRunName = new Label { Text = "Run: -", AutoSize = true, Left = 840, Top = 20, Font = new Font("Segoe UI", 9f) };
+        _lblUptime = new Label { Text = "Uptime: 00:00:00", AutoSize = true, Left = 1008, Top = 20, Font = new Font("Segoe UI", 9f) };
+        _lblStatus = new Label { Text = "", AutoSize = true, Left = 1158, Top = 20, Font = new Font("Segoe UI", 9f) };
+        topPanel.Controls.AddRange(new Control[] { _btnStart, _btnStop, _btnOpenFolder, _btnExportCsv, _btnExportEquity, _btnOptimizer, _btnStrategyLab, _lblRunName, _lblUptime, _lblStatus });
 
         // ── Mode selector panel ─────────────────────────────────────────────
         var modePanel = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(8, 6, 8, 6), BackColor = Color.FromArgb(248, 249, 250) };
@@ -272,6 +274,7 @@ public partial class MainForm : Form
         _btnExportCsv.Click += (s, e) => ExportTradesCsv();
         _btnExportEquity.Click += (s, e) => ExportEquityCsv();
         _btnOptimizer.Click += (s, e) => OpenOptimizerForm();
+        _btnStrategyLab.Click += (s, e) => OpenStrategyLabForm();
         _gridStrategies.CellDoubleClick += (s, e) => ShowStrategyDetail(e.RowIndex);
         _marketData.ConnectionChanged += (s, e) => Invoke(() => UpdateConnectionStatus(e));
         FormClosing += async (s, e) => { if (_cts != null) await StopAsync(); };
@@ -292,6 +295,12 @@ public partial class MainForm : Form
     private void OpenOptimizerForm()
     {
         using var form = new OptimizerForm(_optimizationEngine, _config.Strategies, _config);
+        form.ShowDialog(this);
+    }
+
+    private void OpenStrategyLabForm()
+    {
+        using var form = new StrategyLabForm(_optimizationEngine, _config);
         form.ShowDialog(this);
     }
 

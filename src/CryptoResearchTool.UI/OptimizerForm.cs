@@ -105,23 +105,17 @@ public partial class OptimizerForm : Form
         // ── Outer vertical split: config+params (top) | progress+results (bottom)
         var outerSplit = new SplitContainer
         {
-            Dock              = DockStyle.Fill,
-            Orientation       = Orientation.Horizontal,
-            SplitterDistance  = 390,
-            Panel1MinSize     = 300,
-            Panel2MinSize     = 280,
-            BackColor         = Color.FromArgb(240, 242, 245),
+            Dock        = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            BackColor   = Color.FromArgb(240, 242, 245),
         };
 
         // ── Top-half inner split: settings (left) | param ranges (right)
         var topSplit = new SplitContainer
         {
-            Dock             = DockStyle.Fill,
-            Orientation      = Orientation.Vertical,
-            SplitterDistance = 340,
-            Panel1MinSize    = 280,
-            Panel2MinSize    = 400,
-            BackColor        = Color.FromArgb(240, 242, 245),
+            Dock        = DockStyle.Fill,
+            Orientation = Orientation.Vertical,
+            BackColor   = Color.FromArgb(240, 242, 245),
         };
 
         topSplit.Panel1.Controls.Add(BuildSettingsPanel());
@@ -131,6 +125,16 @@ public partial class OptimizerForm : Form
         outerSplit.Panel2.Controls.Add(BuildResultsPanel());
 
         Controls.Add(outerSplit);
+
+        Load += (s, e) =>
+        {
+            outerSplit.Panel1MinSize    = 300;
+            outerSplit.Panel2MinSize    = 280;
+            outerSplit.SplitterDistance  = 390;
+            topSplit.Panel1MinSize      = 280;
+            topSplit.Panel2MinSize      = 400;
+            topSplit.SplitterDistance    = 340;
+        };
     }
 
     // ── Settings panel (left column) ─────────────────────────────────────────
